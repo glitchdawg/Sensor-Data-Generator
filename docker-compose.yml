@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: sensors
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./microservice-b/internal/db/seed.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  microservice-b:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice-b
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:root@postgres:5432/sensors?sslmode=disable
+      JWT_SECRET: your-secret-key-change-in-production
+      GRPC_PORT: 9090
+      HTTP_PORT: 8080
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    restart: unless-stopped
+
+  microservice-a-temperature:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice-a
+    depends_on:
+      - microservice-b
+    environment:
+      SENSOR_TYPE: temperature
+      GRPC_ADDRESS: microservice-b:9090
+      PORT: 8081
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  microservice-a-humidity:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice-a
+    depends_on:
+      - microservice-b
+    environment:
+      SENSOR_TYPE: humidity
+      GRPC_ADDRESS: microservice-b:9090
+      PORT: 8082
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
+  microservice-a-pressure:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice-a
+    depends_on:
+      - microservice-b
+    environment:
+      SENSOR_TYPE: pressure
+      GRPC_ADDRESS: microservice-b:9090
+      PORT: 8083
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

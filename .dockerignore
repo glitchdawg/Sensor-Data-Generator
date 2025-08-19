@@ -1,0 +1,39 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+*.png
+*.jpg
+*.jpeg
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+*.test
+
+# Build artifacts
+bin/
+dist/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.local
+
+# Postman collection
+*.postman_collection.json
