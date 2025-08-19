@@ -2,128 +2,130 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net"
-	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"google.golang.org/grpc"
 
 	pb "github.com/glitchdawg/synthetic_sensors/proto/ingestpb"
+	"github.com/glitchdawg/synthetic_sensors/microservice-b/internal/handler"
+	customMiddleware "github.com/glitchdawg/synthetic_sensors/microservice-b/internal/middleware"
+	"github.com/glitchdawg/synthetic_sensors/microservice-b/internal/repository"
+	"github.com/glitchdawg/synthetic_sensors/microservice-b/internal/service"
 )
 
-var db *sql.DB
-
-type server struct {
-	pb.UnimplementedIngestServiceServer
-}
-
-func (s *server) Write(stream pb.IngestService_WriteServer) error {
-	count := uint64(0)
-	for {
-		reading, err := stream.Recv()
-		if err != nil {
-			return stream.SendAndClose(&pb.WriteAck{Count: count})
-		}
-		_, err = db.Exec(`INSERT INTO sensor_readings (id1, id2, sensor_type, value, ts) VALUES (?, ?, ?, ?, ?)`,
-			reading.Id1, reading.Id2, reading.SensorType, reading.Value, reading.Timestamp)
-		if err != nil {
-			log.Println("insert error:", err)
-		}
-		count++
-	}
-}
-
 func main() {
-	// Connect to PostgreSQL database
-	var err error
-	db, err = sql.Open("postgres", "user=postgres password=root dbname=sensors sslmode=disable")
-	if err != nil {
-		log.Fatal(err)
+	// Configuration
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:root@postgres:5432/sensors?sslmode=disable"
 	}
 
-	// gRPC server
+	grpcPort := os.Getenv("GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = "9090"
+	}
+
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "8080"
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-secret-key"
+	}
+
+	// Connect to PostgreSQL
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal("failed to connect to database:", err)
+	}
+	defer db.Close()
+
+	// Wait for database to be ready
+	for i := 0; i < 30; i++ {
+		if err := db.Ping(); err == nil {
+			break
+		}
+		log.Printf("waiting for database... (%d/30)", i+1)
+		time.Sleep(1 * time.Second)
+	}
+
+	// Run migrations
+	if err := runMigrations(db); err != nil {
+		log.Printf("migration error (continuing anyway): %v", err)
+	}
+
+	// Initialize layers
+	repo := repository.NewPostgresRepository(db)
+	sensorService := service.NewSensorService(repo)
+	sensorHandler := handler.NewSensorHandler(sensorService)
+	authHandler := handler.NewAuthHandler()
+	grpcHandler := handler.NewGRPCHandler(sensorService)
+
+	// Start gRPC server
 	go func() {
-		lis, err := net.Listen("tcp", ":9090")
+		lis, err := net.Listen("tcp", ":"+grpcPort)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("failed to listen:", err)
 		}
 		grpcServer := grpc.NewServer()
-		pb.RegisterIngestServiceServer(grpcServer, &server{})
-		log.Println("Microservice B gRPC on :9090")
+		pb.RegisterIngestServiceServer(grpcServer, grpcHandler)
+		log.Printf("Microservice B gRPC server listening on :%s", grpcPort)
 		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatal(err)
+			log.Fatal("failed to serve gRPC:", err)
 		}
 	}()
 
-	// REST API
+	// Setup Echo HTTP server
 	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(100)))
 
-	e.GET("/readings", func(c echo.Context) error {
-		id1 := c.QueryParam("id1")
-		id2 := c.QueryParam("id2")
-		from := c.QueryParam("from")
-		to := c.QueryParam("to")
-		limit := c.QueryParam("limit")
-		if limit == "" {
-			limit = "100"
-		}
-
-		q := `SELECT id, id1, id2, sensor_type, value, ts 
-      FROM sensor_readings WHERE 1=1`
-		args := []interface{}{}
-		i := 1
-
-		if id1 != "" {
-			q += fmt.Sprintf(" AND id1=$%d", i)
-			args = append(args, id1)
-			i++
-		}
-		if id2 != "" {
-			q += fmt.Sprintf(" AND id2=$%d", i)
-			args = append(args, id2)
-			i++
-		}
-		if from != "" {
-			q += fmt.Sprintf(" AND ts >= $%d", i)
-			args = append(args, from)
-			i++
-		}
-		if to != "" {
-			q += fmt.Sprintf(" AND ts <= $%d", i)
-			args = append(args, to)
-			i++
-		}
-
-		q += fmt.Sprintf(" ORDER BY ts DESC LIMIT %s", limit)
-
-		rows, err := db.Query(q, args...)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		defer rows.Close()
-
-		type Reading struct {
-			Id1        string    `json:"id1"`
-			Id2        int       `json:"id2"`
-			SensorType string    `json:"sensor_type"`
-			Value      float64   `json:"value"`
-			Ts         time.Time `json:"timestamp"`
-		}
-		readings := []Reading{}
-		for rows.Next() {
-			var r Reading
-			if err := rows.Scan(&r.Id1, &r.Id2, &r.SensorType, &r.Value, &r.Ts); err != nil {
-				return c.JSON(http.StatusInternalServerError, err.Error())
-			}
-			readings = append(readings, r)
-		}
-		return c.JSON(http.StatusOK, readings)
+	// Public routes
+	e.POST("/api/auth/login", authHandler.Login)
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]string{"status": "healthy"})
 	})
 
-	log.Println("Microservice B REST on :8080")
-	e.Logger.Fatal(e.Start(":8080"))
+	// Protected routes
+	api := e.Group("/api")
+	api.Use(customMiddleware.JWTMiddleware)
+
+	// Sensor readings endpoints
+	api.GET("/readings", sensorHandler.GetReadings)
+	api.GET("/readings/:id", sensorHandler.GetReadingByID)
+	api.POST("/readings", sensorHandler.CreateReading, customMiddleware.RequireRole("admin"))
+	api.PUT("/readings/:id", sensorHandler.UpdateReading, customMiddleware.RequireRole("admin"))
+	api.DELETE("/readings", sensorHandler.DeleteReadings, customMiddleware.RequireRole("admin"))
+
+	log.Printf("Microservice B REST API listening on :%s", httpPort)
+	e.Logger.Fatal(e.Start(":" + httpPort))
+}
+
+func runMigrations(db *sql.DB) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://internal/db",
+		"postgres", driver)
+	if err != nil {
+		return err
+	}
+
+	return m.Up()
 }
