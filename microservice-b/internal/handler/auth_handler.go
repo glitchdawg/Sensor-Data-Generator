@@ -23,15 +23,24 @@ type LoginResponse struct {
 	Type  string `json:"type"`
 }
 
-// POST /api/auth/login
+//	@Summary		User login
+//	@Description	Authenticate user and return JWT token
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		LoginRequest	true	"Login credentials"
+//	@Success		200		{object}	LoginResponse	"Login successful"
+//	@Failure		400		{object}	map[string]string	"Invalid request format"
+//	@Failure		401		{object}	map[string]string	"Invalid credentials"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/api/auth/login [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	req := new(LoginRequest)
 	if err := c.Bind(req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
-	// Simple hardcoded authentication for demo
-	// In production, verify against database
+	// Hardcoded users for demo purposes
 	var userID, role string
 	if req.Username == "admin" && req.Password == "admin123" {
 		userID = "1"

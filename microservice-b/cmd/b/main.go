@@ -1,3 +1,21 @@
+//	@title			Synthetic Sensors API
+//	@version		1.0
+//	@description	API for managing sensor data readings with microservice architecture
+//	@termsOfService	http://swagger.io/terms/
+//
+//	@contact.name	API Support
+//	@contact.email	joydeeppaul9000@gmail.com
+//
+//	@license.name	MIT
+//	@license.url	https://opensource.org/licenses/MIT
+//
+//	@host		localhost:8080
+//	@BasePath	/
+//
+//	@securityDefinitions.apikey	Bearer
+//	@in							header
+//	@name						Authorization
+//	@description				Type "Bearer" followed by a space and JWT token.
 package main
 
 import (
@@ -60,9 +78,9 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 
-	// Run migrations
+	// Run database migrations
 	if err := runMigrations(db); err != nil {
-		log.Printf("migration error (continuing anyway): %v", err)
+		log.Printf("migration failed: %v", err)
 	}
 
 	// Initialize layers
@@ -97,6 +115,12 @@ func main() {
 	e.POST("/api/auth/login", authHandler.Login)
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{"status": "healthy"})
+	})
+	
+	// Swagger documentation
+	e.Static("/docs", "./microservice-b/static")
+	e.GET("/swagger", func(c echo.Context) error {
+		return c.Redirect(302, "/docs/index.html")
 	})
 
 	// Protected routes
