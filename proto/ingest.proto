@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package ingest;
+option go_package = "your-project/proto/ingestpb";
+
+service IngestService {
+  rpc Write (stream Reading) returns (WriteAck);
+}
+message Reading {
+  double value = 1;
+  string sensor_type = 2;
+  string id1 = 3;
+  int32 id2 = 4;
+  string timestamp = 5; // RFC3339
+}
+
+message WriteAck {
+  uint64 count = 1;
+}
