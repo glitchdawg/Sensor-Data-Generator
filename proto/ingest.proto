@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package ingest;
-option go_package = "your-project/proto/ingestpb";
+option go_package = "synthetic_sensors/proto/ingestpb";
 
 service IngestService {
   rpc Write (stream Reading) returns (WriteAck);
