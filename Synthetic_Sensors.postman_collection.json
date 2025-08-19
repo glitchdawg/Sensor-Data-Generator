@@ -1,0 +1,370 @@
+{
+  "info": {
+    "name": "Synthetic Sensors API",
+    "description": "API collection for testing Synthetic Sensors microservices",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('auth_token', response.token);",
+                  "    pm.test('Login successful', () => {",
+                  "        pm.expect(response).to.have.property('token');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login as User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('auth_token', response.token);",
+                  "    pm.test('Login successful', () => {",
+                  "        pm.expect(response).to.have.property('token');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"user\",\n    \"password\": \"user123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sensor Readings",
+      "item": [
+        {
+          "name": "Get All Readings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings?page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Readings by ID1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings?id1=A&page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"],
+              "query": [
+                {
+                  "key": "id1",
+                  "value": "A"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Readings by ID Combination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings?id1=A&id2=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"],
+              "query": [
+                {
+                  "key": "id1",
+                  "value": "A"
+                },
+                {
+                  "key": "id2",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Readings by Time Range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings?from=2024-01-01T00:00:00Z&to=2024-12-31T23:59:59Z",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-12-31T23:59:59Z"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Reading by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Reading (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id1\": \"A\",\n    \"id2\": 42,\n    \"sensor_type\": \"temperature\",\n    \"value\": 23.5,\n    \"timestamp\": \"2024-01-15T10:30:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/readings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"]
+            }
+          }
+        },
+        {
+          "name": "Update Reading (Admin Only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id1\": \"B\",\n    \"id2\": 99,\n    \"sensor_type\": \"humidity\",\n    \"value\": 65.5,\n    \"timestamp\": \"2024-01-15T11:30:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/readings/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Readings by Filter (Admin Only)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/readings?id1=A&id2=42",
+              "host": ["{{base_url}}"],
+              "path": ["api", "readings"],
+              "query": [
+                {
+                  "key": "id1",
+                  "value": "A"
+                },
+                {
+                  "key": "id2",
+                  "value": "42"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Microservice A Configuration",
+      "item": [
+        {
+          "name": "Update Frequency (Temperature)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"frequency_ms\": 2000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/config/frequency",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8081",
+              "path": ["config", "frequency"]
+            }
+          }
+        },
+        {
+          "name": "Get Frequency (Temperature)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/config/frequency",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8081",
+              "path": ["config", "frequency"]
+            }
+          }
+        },
+        {
+          "name": "Health Check (Temperature)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8081",
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Microservice B Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
