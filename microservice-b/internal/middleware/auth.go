@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var jwtSecret = []byte("your-secret-key") // In production, use environment variable
+var jwtSecret = []byte("your-secret-key")
 
 type JWTClaims struct {
 	UserID string `json:"user_id"`

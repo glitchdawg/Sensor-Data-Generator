@@ -23,7 +23,23 @@ func NewSensorHandler(service *service.SensorService) *SensorHandler {
 	}
 }
 
-// GET /api/readings
+//	@Summary		Get sensor readings
+//	@Description	Get sensor readings with optional filtering by ID1, ID2, time range, and pagination
+//	@Tags			Sensor Readings
+//	@Accept			json
+//	@Produce		json
+//	@Param			id1			query		string	false	"Filter by ID1 (A-Z)"
+//	@Param			id2			query		int		false	"Filter by ID2 (0-999)"
+//	@Param			from		query		string	false	"Start timestamp (RFC3339 format)"
+//	@Param			to			query		string	false	"End timestamp (RFC3339 format)"
+//	@Param			page		query		int		false	"Page number (default: 1)"
+//	@Param			page_size	query		int		false	"Items per page (default: 10, max: 100)"
+//	@Success		200			{object}	domain.PaginatedSensorReadings	"Successfully retrieved readings"
+//	@Failure		400			{object}	map[string]string				"Invalid request parameters"
+//	@Failure		401			{object}	map[string]string				"Unauthorized"
+//	@Failure		500			{object}	map[string]string				"Internal server error"
+//	@Security		Bearer
+//	@Router			/api/readings [get]
 func (h *SensorHandler) GetReadings(c echo.Context) error {
 	filter := &domain.SensorReadingFilter{}
 
@@ -75,7 +91,19 @@ func (h *SensorHandler) GetReadings(c echo.Context) error {
 	return c.JSON(http.StatusOK, result)
 }
 
-// GET /api/readings/:id
+//	@Summary		Get sensor reading by ID
+//	@Description	Get a specific sensor reading by its ID
+//	@Tags			Sensor Readings
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Reading ID"
+//	@Success		200	{object}	domain.SensorReading	"Successfully retrieved reading"
+//	@Failure		400	{object}	map[string]string		"Invalid ID format"
+//	@Failure		401	{object}	map[string]string		"Unauthorized"
+//	@Failure		404	{object}	map[string]string		"Reading not found"
+//	@Failure		500	{object}	map[string]string		"Internal server error"
+//	@Security		Bearer
+//	@Router			/api/readings/{id} [get]
 func (h *SensorHandler) GetReadingByID(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -93,7 +121,19 @@ func (h *SensorHandler) GetReadingByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, reading)
 }
 
-// POST /api/readings
+//	@Summary		Create sensor reading
+//	@Description	Create a new sensor reading (requires admin privileges)
+//	@Tags			Sensor Readings
+//	@Accept			json
+//	@Produce		json
+//	@Param			reading	body		domain.SensorReading	true	"Sensor reading data"
+//	@Success		201		{object}	domain.SensorReading	"Reading created successfully"
+//	@Failure		400		{object}	map[string]string		"Invalid request body or validation error"
+//	@Failure		401		{object}	map[string]string		"Unauthorized"
+//	@Failure		403		{object}	map[string]string		"Forbidden - Admin access required"
+//	@Failure		500		{object}	map[string]string		"Internal server error"
+//	@Security		Bearer
+//	@Router			/api/readings [post]
 func (h *SensorHandler) CreateReading(c echo.Context) error {
 	reading := &domain.SensorReading{}
 	if err := c.Bind(reading); err != nil {
@@ -111,7 +151,21 @@ func (h *SensorHandler) CreateReading(c echo.Context) error {
 	return c.JSON(http.StatusCreated, reading)
 }
 
-// PUT /api/readings/:id
+//	@Summary		Update sensor reading
+//	@Description	Update an existing sensor reading by ID (requires admin privileges)
+//	@Tags			Sensor Readings
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Reading ID"
+//	@Param			reading	body		domain.SensorReading	true	"Updated sensor reading data"
+//	@Success		200		{object}	map[string]string		"Reading updated successfully"
+//	@Failure		400		{object}	map[string]string		"Invalid ID format or request body"
+//	@Failure		401		{object}	map[string]string		"Unauthorized"
+//	@Failure		403		{object}	map[string]string		"Forbidden - Admin access required"
+//	@Failure		404		{object}	map[string]string		"Reading not found"
+//	@Failure		500		{object}	map[string]string		"Internal server error"
+//	@Security		Bearer
+//	@Router			/api/readings/{id} [put]
 func (h *SensorHandler) UpdateReading(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -134,7 +188,22 @@ func (h *SensorHandler) UpdateReading(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "reading updated successfully"})
 }
 
-// DELETE /api/readings
+//	@Summary		Delete sensor readings
+//	@Description	Delete sensor readings based on filter criteria (requires admin privileges)
+//	@Tags			Sensor Readings
+//	@Accept			json
+//	@Produce		json
+//	@Param			id1		query		string	false	"Filter by ID1 (A-Z)"
+//	@Param			id2		query		int		false	"Filter by ID2 (0-999)"
+//	@Param			from	query		string	false	"Start timestamp (RFC3339 format)"
+//	@Param			to		query		string	false	"End timestamp (RFC3339 format)"
+//	@Success		200		{object}	map[string]interface{}	"Readings deleted successfully with count"
+//	@Failure		400		{object}	map[string]string		"Invalid request parameters"
+//	@Failure		401		{object}	map[string]string		"Unauthorized"
+//	@Failure		403		{object}	map[string]string		"Forbidden - Admin access required"
+//	@Failure		500		{object}	map[string]string		"Internal server error"
+//	@Security		Bearer
+//	@Router			/api/readings [delete]
 func (h *SensorHandler) DeleteReadings(c echo.Context) error {
 	filter := &domain.SensorReadingFilter{}
 
